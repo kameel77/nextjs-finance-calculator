@@ -24,6 +24,15 @@ const formatCurrency = (value: number) =>
 const formatPercent = (value: number, fractionDigits = 2) =>
   `${(value * 100).toFixed(fractionDigits)}%`;
 
+const decodeVehicleId = (id: string) => {
+  try {
+    const [brand, model] = JSON.parse(id) as [string, string];
+    return { brand, model };
+  } catch {
+    return { brand: "", model: "" };
+  }
+};
+
 export function ResultsPanel() {
   const { data: catalog, isLoading, isError, error } = useCatalog();
   const form = useCalculatorStore((state) => state.form);
@@ -38,30 +47,49 @@ export function ResultsPanel() {
     return products.find((product) => product.product_code === form.productCode);
   }, [catalog, form.financingType, form.productCode]);
 
-  const selectedVehicle = useMemo(() => {
-    if (!catalog || !form.vehicleId) {
-      return undefined;
+  const vehicleInfo = useMemo(() => {
+    if (form.vehicleMode === "catalog") {
+      if (!form.vehicleId) {
+        return { brand: "", model: "", trim: "", baseLabel: "", label: "—" };
+      }
+      const { brand, model } = decodeVehicleId(form.vehicleId);
+      const baseLabel = [brand, model].filter(Boolean).join(" ");
+      return {
+        brand,
+        model,
+        trim: "",
+        baseLabel,
+        label: baseLabel || "—"
+      };
     }
-    try {
-      const [brand, model] = JSON.parse(form.vehicleId) as [string, string];
-      return { brand, model };
-    } catch {
-      return undefined;
-    }
-  }, [catalog, form.vehicleId]);
+
+    const brand = form.customBrand ?? "";
+    const model = form.customModel ?? "";
+    const trim = form.customTrim?.trim() ?? "";
+    const baseLabel = [brand, model].filter(Boolean).join(" ");
+    const label = [baseLabel, trim].filter(Boolean).join(" • ").trim();
+
+    return {
+      brand,
+      model,
+      trim,
+      baseLabel,
+      label: label || "—"
+    };
+  }, [form.customBrand, form.customModel, form.customTrim, form.vehicleId, form.vehicleMode]);
 
   const activeServiceRow = useMemo(() => {
-    if (!catalog || !selectedVehicle) {
+    if (!catalog || !vehicleInfo.brand || !vehicleInfo.model) {
       return undefined;
     }
     return catalog.services.find(
       (service) =>
-        service.Marka === selectedVehicle.brand &&
-        service.Model === selectedVehicle.model &&
+        service.Marka === vehicleInfo.brand &&
+        service.Model === vehicleInfo.model &&
         service.dlugosc_kontraktu === form.contractMonths &&
         service.przebieg_roczny === form.annualMileage
     );
-  }, [catalog, form.annualMileage, form.contractMonths, selectedVehicle]);
+  }, [catalog, form.annualMileage, form.contractMonths, vehicleInfo.brand, vehicleInfo.model]);
 
   const calculation = useMemo(() => {
     if (!selectedProduct) {
@@ -104,9 +132,8 @@ export function ResultsPanel() {
               <ResultSummary
                 calculation={calculation}
                 productName={selectedProduct.product_name}
-                vehicleLabel={
-                  selectedVehicle ? `${selectedVehicle.brand} ${selectedVehicle.model}` : "—"
-                }
+                vehicleLabel={vehicleInfo.baseLabel || "—"}
+                vehicleTrim={vehicleInfo.trim}
                 contractMonths={form.contractMonths}
                 annualMileage={form.annualMileage}
                 clientType={form.clientType}
@@ -200,6 +227,7 @@ type ResultSummaryProps = {
   calculation: CalculationResult;
   productName: string;
   vehicleLabel: string;
+  vehicleTrim?: string;
   contractMonths: number;
   annualMileage: number;
   clientType: "business" | "consumer";
@@ -209,6 +237,7 @@ function ResultSummary({
   calculation,
   productName,
   vehicleLabel,
+  vehicleTrim,
   contractMonths,
   annualMileage,
   clientType
@@ -219,6 +248,7 @@ function ResultSummary({
         <Typography variant="subtitle1">{productName}</Typography>
         <Stack direction="row" spacing={1} flexWrap="wrap">
           <Chip size="small" label={`Pojazd: ${vehicleLabel}`} />
+          {vehicleTrim && <Chip size="small" label={`Wersja: ${vehicleTrim}`} />}
           <Chip size="small" label={`Okres: ${contractMonths} mies.`} />
           <Chip size="small" label={`Przebieg: ${annualMileage.toLocaleString("pl-PL")} km/rok`} />
         </Stack>

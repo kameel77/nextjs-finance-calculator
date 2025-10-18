@@ -24,7 +24,7 @@ import {
 import type { ClientType, FinancingType, SelectedServices } from "../lib/calculations";
 import { useCatalog } from "../lib/api/use-catalog";
 import type { FinancingProduct } from "../lib/schemas";
-import { useCalculatorStore } from "../store/calculator-store";
+import { useCalculatorStore, type VehicleMode } from "../store/calculator-store";
 
 const DEFAULT_ANNUAL_MILEAGES = [15000, 20000, 25000, 30000, 35000, 40000];
 
@@ -89,18 +89,39 @@ export function ParameterForm() {
     }));
   }, [catalog]);
 
-  useEffect(() => {
-    if (!catalog || !vehicleOptions.length) {
-      return;
+  const modelsByBrand = useMemo(() => {
+    const map = new Map<string, string[]>();
+    if (!catalog) {
+      return map;
     }
+    const temp = new Map<string, Set<string>>();
+    catalog.vehicles.forEach((vehicle) => {
+      if (!temp.has(vehicle.Marka)) {
+        temp.set(vehicle.Marka, new Set());
+      }
+      temp.get(vehicle.Marka)!.add(vehicle.Model);
+    });
+    temp.forEach((models, brand) => {
+      map.set(
+        brand,
+        Array.from(models).sort((a, b) => a.localeCompare(b, "pl", { sensitivity: "base" }))
+      );
+    });
+    return map;
+  }, [catalog]);
 
-    const exists = vehicleOptions.some((option) => option.id === form.vehicleId);
+  const brandOptions = useMemo(
+    () =>
+      Array.from(modelsByBrand.keys()).sort((a, b) => a.localeCompare(b, "pl", { sensitivity: "base" })),
+    [modelsByBrand]
+  );
 
-    if (!exists) {
-      setField("vehicleId", vehicleOptions[0].id);
-      resetSelectedServices();
+  const customModelOptions = useMemo(() => {
+    if (!form.customBrand) {
+      return [];
     }
-  }, [catalog, form.vehicleId, resetSelectedServices, setField, vehicleOptions]);
+    return modelsByBrand.get(form.customBrand) ?? [];
+  }, [form.customBrand, modelsByBrand]);
 
   useEffect(() => {
     if (!catalog || !activeProducts.length) {
@@ -148,6 +169,94 @@ export function ParameterForm() {
     form.downPaymentPct,
     form.productCode,
     selectedProduct,
+    setFields
+  ]);
+
+  useEffect(() => {
+    if (!catalog || form.vehicleMode !== "catalog") {
+      return;
+    }
+
+    if (!vehicleOptions.length) {
+      if (form.vehicleId) {
+        setFields({ vehicleId: "" });
+        resetSelectedServices();
+      }
+      return;
+    }
+
+    const exists = vehicleOptions.some((option) => option.id === form.vehicleId);
+
+    if (!exists) {
+      setFields({ vehicleId: vehicleOptions[0].id });
+      resetSelectedServices();
+    }
+  }, [
+    catalog,
+    form.vehicleId,
+    form.vehicleMode,
+    resetSelectedServices,
+    setFields,
+    vehicleOptions
+  ]);
+
+  useEffect(() => {
+    if (!catalog || form.vehicleMode !== "custom") {
+      return;
+    }
+
+    if (!brandOptions.length) {
+      if (form.customBrand || form.customModel || form.vehicleId) {
+        setFields({
+          customBrand: "",
+          customModel: "",
+          vehicleId: ""
+        });
+        resetSelectedServices();
+      }
+      return;
+    }
+
+    let nextBrand = brandOptions.includes(form.customBrand) ? form.customBrand : brandOptions[0];
+    const modelsForBrand = modelsByBrand.get(nextBrand) ?? [];
+    let nextModel = modelsForBrand.includes(form.customModel)
+      ? form.customModel
+      : modelsForBrand[0] ?? "";
+    const encoded = nextBrand && nextModel ? encodeVehicleId(nextBrand, nextModel) : "";
+
+    const updates: Partial<typeof form> = {};
+    let shouldReset = false;
+
+    if (nextBrand !== form.customBrand) {
+      updates.customBrand = nextBrand;
+      shouldReset = true;
+    }
+
+    if (nextModel !== form.customModel) {
+      updates.customModel = nextModel;
+      shouldReset = true;
+    }
+
+    if (encoded !== form.vehicleId) {
+      updates.vehicleId = encoded;
+      shouldReset = true;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      setFields(updates);
+      if (shouldReset) {
+        resetSelectedServices();
+      }
+    }
+  }, [
+    brandOptions,
+    catalog,
+    form.customBrand,
+    form.customModel,
+    form.vehicleId,
+    form.vehicleMode,
+    modelsByBrand,
+    resetSelectedServices,
     setFields
   ]);
 
@@ -274,6 +383,33 @@ export function ParameterForm() {
     [setFields]
   );
 
+  const handleVehicleModeChange = useCallback(
+    (_: unknown, value: VehicleMode | null) => {
+      if (!value || value === form.vehicleMode) {
+        return;
+      }
+
+      if (value === "catalog") {
+        const nextId = vehicleOptions[0]?.id ?? "";
+        setFields({
+          vehicleMode: "catalog",
+          vehicleId: nextId
+        });
+      } else {
+        const nextBrand = brandOptions[0] ?? "";
+        const nextModel = nextBrand ? modelsByBrand.get(nextBrand)?.[0] ?? "" : "";
+        setFields({
+          vehicleMode: "custom",
+          customBrand: nextBrand,
+          customModel: nextModel,
+          vehicleId: nextBrand && nextModel ? encodeVehicleId(nextBrand, nextModel) : ""
+        });
+      }
+      resetSelectedServices();
+    },
+    [brandOptions, form.vehicleMode, modelsByBrand, resetSelectedServices, setFields, vehicleOptions]
+  );
+
   const handleVehicleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       setFields({
@@ -282,6 +418,41 @@ export function ParameterForm() {
       resetSelectedServices();
     },
     [resetSelectedServices, setFields]
+  );
+
+  const handleBrandChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const nextBrand = event.target.value;
+      const modelList = modelsByBrand.get(nextBrand) ?? [];
+      const nextModel = modelList.includes(form.customModel) ? form.customModel : modelList[0] ?? "";
+      setFields({
+        customBrand: nextBrand,
+        customModel: nextModel,
+        vehicleId: nextBrand && nextModel ? encodeVehicleId(nextBrand, nextModel) : ""
+      });
+      resetSelectedServices();
+    },
+    [form.customModel, modelsByBrand, resetSelectedServices, setFields]
+  );
+
+  const handleModelChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const nextModel = event.target.value;
+      setFields({
+        customModel: nextModel,
+        vehicleId:
+          form.customBrand && nextModel ? encodeVehicleId(form.customBrand, nextModel) : ""
+      });
+      resetSelectedServices();
+    },
+    [form.customBrand, resetSelectedServices, setFields]
+  );
+
+  const handleTrimChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setField("customTrim", event.target.value);
+    },
+    [setField]
   );
 
   const handleContractChange = useCallback(
@@ -437,21 +608,83 @@ export function ParameterForm() {
                 </TextField>
               </FormControl>
 
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>
+                  Wybór pojazdu
+                </Typography>
+                <ToggleButtonGroup
+                  value={form.vehicleMode}
+                  exclusive
+                  onChange={handleVehicleModeChange}
+                  size="small"
+                  sx={{ mb: 2 }}
+                >
+                  <ToggleButton value="catalog">Pojazd z listy</ToggleButton>
+                  <ToggleButton value="custom">Własny pojazd</ToggleButton>
+                </ToggleButtonGroup>
+
+                {form.vehicleMode === "catalog" ? (
+                  <FormControl fullWidth>
+                    <TextField
+                      select
+                      label="Pojazd"
+                      value={form.vehicleId}
+                      onChange={handleVehicleChange}
+                      disabled={!vehicleOptions.length}
+                    >
+                      {vehicleOptions.map((option) => (
+                        <MenuItem key={option.id} value={option.id}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </FormControl>
+                ) : (
+                  <Stack spacing={2}>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                      <FormControl fullWidth>
+                        <TextField
+                          select
+                          label="Marka"
+                          value={form.customBrand}
+                          onChange={handleBrandChange}
+                          disabled={!brandOptions.length}
+                        >
+                          {brandOptions.map((brand) => (
+                            <MenuItem key={brand} value={brand}>
+                              {brand}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                      </FormControl>
+                      <FormControl fullWidth>
+                        <TextField
+                          select
+                          label="Model"
+                          value={form.customModel}
+                          onChange={handleModelChange}
+                          disabled={!customModelOptions.length}
+                        >
+                          {customModelOptions.map((model) => (
+                            <MenuItem key={model} value={model}>
+                              {model}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                      </FormControl>
+                    </Stack>
+                    <TextField
+                      label="Trim / wersja"
+                      value={form.customTrim}
+                      onChange={handleTrimChange}
+                      placeholder="Np. Business Line"
+                      fullWidth
+                    />
+                  </Stack>
+                )}
+              </Box>
+
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                <FormControl fullWidth>
-                  <TextField
-                    select
-                    label="Pojazd"
-                    value={form.vehicleId}
-                    onChange={handleVehicleChange}
-                  >
-                    {vehicleOptions.map((option) => (
-                      <MenuItem key={option.id} value={option.id}>
-                        {option.label}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </FormControl>
                 <FormControl fullWidth>
                   <TextField
                     select
@@ -466,9 +699,6 @@ export function ParameterForm() {
                     ))}
                   </TextField>
                 </FormControl>
-              </Stack>
-
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                 <FormControl fullWidth>
                   <TextField
                     select
@@ -483,6 +713,9 @@ export function ParameterForm() {
                     ))}
                   </TextField>
                 </FormControl>
+              </Stack>
+
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                 <FormControl fullWidth>
                   <TextField
                     type="number"
@@ -495,9 +728,6 @@ export function ParameterForm() {
                     }}
                   />
                 </FormControl>
-              </Stack>
-
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                 <FormControl fullWidth>
                   <TextField
                     type="number"
@@ -544,7 +774,7 @@ export function ParameterForm() {
               {!activeServiceRow && (
                 <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
                   Dla tej konfiguracji brak zdefiniowanych usług w arkuszu. Zmień parametry lub
-                  rozszerz dane źródłowe.
+                  rozbuduj dane źródłowe.
                 </Alert>
               )}
               <FormGroup>

@@ -1,12 +1,22 @@
 import { create } from "zustand";
 
-import type { ClientType, FinancingType, SelectedServices } from "../lib/calculations";
+import type {
+  ClientType,
+  FinancingType,
+  SelectedServices
+} from "../lib/calculations";
+
+export type VehicleMode = "catalog" | "custom";
 
 type CalculatorFormState = {
   clientType: ClientType;
   financingType: FinancingType;
+  vehicleMode: VehicleMode;
   productCode: string;
   vehicleId: string;
+  customBrand: string;
+  customModel: string;
+  customTrim: string;
   contractMonths: number;
   annualMileage: number;
   priceGross: number;
@@ -29,8 +39,12 @@ type CalculatorState = {
 const DEFAULT_FORM_STATE: CalculatorFormState = {
   clientType: "business",
   financingType: "credit",
+  vehicleMode: "catalog",
   productCode: "",
   vehicleId: "",
+  customBrand: "",
+  customModel: "",
+  customTrim: "",
   contractMonths: 36,
   annualMileage: 20000,
   priceGross: 180000,
