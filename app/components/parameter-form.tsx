@@ -65,7 +65,6 @@ export function ParameterForm() {
   const setField = useCalculatorStore((state) => state.setField);
   const setFields = useCalculatorStore((state) => state.setFields);
   const setSelectedServices = useCalculatorStore((state) => state.setSelectedServices);
-  const resetSelectedServices = useCalculatorStore((state) => state.resetSelectedServices);
 
   const activeProducts = useMemo(() => {
     if (!catalog) {
@@ -180,7 +179,6 @@ export function ParameterForm() {
     if (!vehicleOptions.length) {
       if (form.vehicleId) {
         setFields({ vehicleId: "" });
-        resetSelectedServices();
       }
       return;
     }
@@ -189,13 +187,11 @@ export function ParameterForm() {
 
     if (!exists) {
       setFields({ vehicleId: vehicleOptions[0].id });
-      resetSelectedServices();
     }
   }, [
     catalog,
     form.vehicleId,
     form.vehicleMode,
-    resetSelectedServices,
     setFields,
     vehicleOptions
   ]);
@@ -212,7 +208,6 @@ export function ParameterForm() {
           customModel: "",
           vehicleId: ""
         });
-        resetSelectedServices();
       }
       return;
     }
@@ -225,28 +220,21 @@ export function ParameterForm() {
     const encoded = nextBrand && nextModel ? encodeVehicleId(nextBrand, nextModel) : "";
 
     const updates: Partial<typeof form> = {};
-    let shouldReset = false;
 
     if (nextBrand !== form.customBrand) {
       updates.customBrand = nextBrand;
-      shouldReset = true;
     }
 
     if (nextModel !== form.customModel) {
       updates.customModel = nextModel;
-      shouldReset = true;
     }
 
     if (encoded !== form.vehicleId) {
       updates.vehicleId = encoded;
-      shouldReset = true;
     }
 
     if (Object.keys(updates).length > 0) {
       setFields(updates);
-      if (shouldReset) {
-        resetSelectedServices();
-      }
     }
   }, [
     brandOptions,
@@ -256,7 +244,6 @@ export function ParameterForm() {
     form.vehicleId,
     form.vehicleMode,
     modelsByBrand,
-    resetSelectedServices,
     setFields
   ]);
 
@@ -299,9 +286,8 @@ export function ParameterForm() {
 
     if (!availableTerms.includes(form.contractMonths)) {
       setField("contractMonths", availableTerms[0]);
-      resetSelectedServices();
     }
-  }, [availableTerms, form.contractMonths, resetSelectedServices, setField]);
+  }, [availableTerms, form.contractMonths, setField]);
 
   const mileageOptions = useMemo(() => {
     if (!catalog || !form.vehicleId) {
@@ -331,9 +317,8 @@ export function ParameterForm() {
 
     if (!mileageOptions.includes(form.annualMileage)) {
       setField("annualMileage", mileageOptions[0]);
-      resetSelectedServices();
     }
-  }, [form.annualMileage, mileageOptions, resetSelectedServices, setField]);
+  }, [form.annualMileage, mileageOptions, setField]);
 
   const activeServiceRow = useMemo(() => {
     if (!catalog || !form.vehicleId) {
@@ -405,9 +390,8 @@ export function ParameterForm() {
           vehicleId: nextBrand && nextModel ? encodeVehicleId(nextBrand, nextModel) : ""
         });
       }
-      resetSelectedServices();
     },
-    [brandOptions, form.vehicleMode, modelsByBrand, resetSelectedServices, setFields, vehicleOptions]
+    [brandOptions, form.vehicleMode, modelsByBrand, setFields, vehicleOptions]
   );
 
   const handleVehicleChange = useCallback(
@@ -415,9 +399,8 @@ export function ParameterForm() {
       setFields({
         vehicleId: event.target.value
       });
-      resetSelectedServices();
     },
-    [resetSelectedServices, setFields]
+    [setFields]
   );
 
   const handleBrandChange = useCallback(
@@ -430,9 +413,8 @@ export function ParameterForm() {
         customModel: nextModel,
         vehicleId: nextBrand && nextModel ? encodeVehicleId(nextBrand, nextModel) : ""
       });
-      resetSelectedServices();
     },
-    [form.customModel, modelsByBrand, resetSelectedServices, setFields]
+    [form.customModel, modelsByBrand, setFields]
   );
 
   const handleModelChange = useCallback(
@@ -443,9 +425,8 @@ export function ParameterForm() {
         vehicleId:
           form.customBrand && nextModel ? encodeVehicleId(form.customBrand, nextModel) : ""
       });
-      resetSelectedServices();
     },
-    [form.customBrand, resetSelectedServices, setFields]
+    [form.customBrand, setFields]
   );
 
   const handleTrimChange = useCallback(
@@ -460,10 +441,9 @@ export function ParameterForm() {
       const value = Number(event.target.value);
       if (Number.isFinite(value)) {
         setField("contractMonths", value);
-        resetSelectedServices();
       }
     },
-    [resetSelectedServices, setField]
+    [setField]
   );
 
   const handleMileageChange = useCallback(
@@ -471,16 +451,31 @@ export function ParameterForm() {
       const value = Number(event.target.value);
       if (Number.isFinite(value)) {
         setField("annualMileage", value);
-        resetSelectedServices();
       }
     },
-    [resetSelectedServices, setField]
+    [setField]
   );
 
-  const handlePriceChange = useCallback(
+  const handleListPriceChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const value = Number(event.target.value);
+      setField("listPriceGross", Number.isFinite(value) ? Math.max(value, 0) : 0);
+    },
+    [setField]
+  );
+
+  const handleSalePriceChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const value = Number(event.target.value);
       setField("priceGross", Number.isFinite(value) ? Math.max(value, 0) : 0);
+    },
+    [setField]
+  );
+
+  const handleExtraMarginChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const value = Number(event.target.value);
+      setField("extraMarginPct", Number.isFinite(value) ? clamp(value, 0, 100) : 0);
     },
     [setField]
   );
@@ -719,15 +714,42 @@ export function ParameterForm() {
                 <FormControl fullWidth>
                   <TextField
                     type="number"
-                    label="Cena brutto pojazdu"
-                    value={form.priceGross}
-                    onChange={handlePriceChange}
+                    label="Cena katalogowa (brutto)"
+                    value={form.listPriceGross}
+                    onChange={handleListPriceChange}
                     inputProps={{ min: 0, step: 500 }}
                     InputProps={{
                       endAdornment: <InputAdornment position="end">PLN</InputAdornment>
                     }}
                   />
                 </FormControl>
+                <FormControl fullWidth>
+                  <TextField
+                    type="number"
+                    label="Cena sprzedaży (brutto)"
+                    value={form.priceGross}
+                    onChange={handleSalePriceChange}
+                    inputProps={{ min: 0, step: 500 }}
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">PLN</InputAdornment>
+                    }}
+                  />
+                </FormControl>
+                <FormControl fullWidth>
+                  <TextField
+                    type="number"
+                    label="Dodatk. marża fin. (%)"
+                    value={form.extraMarginPct}
+                    onChange={handleExtraMarginChange}
+                    inputProps={{ min: 0, max: 100, step: 0.1 }}
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">%</InputAdornment>
+                    }}
+                  />
+                </FormControl>
+              </Stack>
+
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                 <FormControl fullWidth>
                   <TextField
                     type="number"

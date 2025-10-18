@@ -97,10 +97,12 @@ export function ResultsPanel() {
     }
     return calculateOffer({
       product: selectedProduct,
+      listPriceGross: form.listPriceGross,
       priceGross: form.priceGross,
       termMonths: form.contractMonths,
       downPaymentPct: form.downPaymentPct,
       balloonPct: form.balloonPct,
+      extraMarginPct: form.extraMarginPct,
       vatRate: VAT_RATE,
       servicesRow: activeServiceRow,
       selectedServices
@@ -110,6 +112,8 @@ export function ResultsPanel() {
     form.balloonPct,
     form.contractMonths,
     form.downPaymentPct,
+    form.extraMarginPct,
+    form.listPriceGross,
     form.priceGross,
     selectedProduct,
     selectedServices
@@ -134,6 +138,9 @@ export function ResultsPanel() {
                 productName={selectedProduct.product_name}
                 vehicleLabel={vehicleInfo.baseLabel || "—"}
                 vehicleTrim={vehicleInfo.trim}
+                listPriceGross={form.listPriceGross}
+                salePriceGross={form.priceGross}
+                extraMarginPct={form.extraMarginPct}
                 contractMonths={form.contractMonths}
                 annualMileage={form.annualMileage}
                 clientType={form.clientType}
@@ -228,6 +235,9 @@ type ResultSummaryProps = {
   productName: string;
   vehicleLabel: string;
   vehicleTrim?: string;
+  listPriceGross: number;
+  salePriceGross: number;
+  extraMarginPct: number;
   contractMonths: number;
   annualMileage: number;
   clientType: "business" | "consumer";
@@ -238,6 +248,9 @@ function ResultSummary({
   productName,
   vehicleLabel,
   vehicleTrim,
+  listPriceGross,
+  salePriceGross,
+  extraMarginPct,
   contractMonths,
   annualMileage,
   clientType
@@ -273,6 +286,14 @@ function ResultSummary({
 
       <Stack spacing={1}>
         <SummaryRow
+          label="Cena katalogowa (brutto)"
+          value={formatCurrency(listPriceGross)}
+        />
+        <SummaryRow
+          label="Cena sprzedaży (brutto)"
+          value={formatCurrency(salePriceGross)}
+        />
+        <SummaryRow
           label="Wpłata własna"
           value={formatCurrency(calculation.downPaymentAmountGross)}
         />
@@ -302,6 +323,10 @@ function ResultSummary({
         <SummaryRow
           label="Oprocentowanie nominalne (roczne)"
           value={`${calculation.annualRate.toFixed(2)}%`}
+        />
+        <SummaryRow
+          label="Dodatk. marża finansowa"
+          value={`${extraMarginPct.toFixed(1)} p.p.`}
         />
         <SummaryRow
           label="Oprocentowanie efektywne (miesięczne)"

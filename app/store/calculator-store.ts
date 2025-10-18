@@ -19,9 +19,11 @@ type CalculatorFormState = {
   customTrim: string;
   contractMonths: number;
   annualMileage: number;
+  listPriceGross: number;
   priceGross: number;
   downPaymentPct: number;
   balloonPct: number;
+  extraMarginPct: number;
 };
 
 type CalculatorState = {
@@ -47,9 +49,11 @@ const DEFAULT_FORM_STATE: CalculatorFormState = {
   customTrim: "",
   contractMonths: 36,
   annualMileage: 20000,
+  listPriceGross: 180000,
   priceGross: 180000,
   downPaymentPct: 10,
-  balloonPct: 20
+  balloonPct: 20,
+  extraMarginPct: 0
 };
 
 const EMPTY_SERVICES: SelectedServices = {

@@ -18,10 +18,12 @@ export type ServiceBreakdown = {
 
 export type CalculationInput = {
   product: FinancingProduct;
+  listPriceGross: number;
   priceGross: number;
   termMonths: number;
   downPaymentPct: number;
   balloonPct: number;
+  extraMarginPct: number;
   vatRate: number;
   servicesRow?: Service;
   selectedServices: SelectedServices;
@@ -67,10 +69,12 @@ const clampPercentage = (value: number) =>
 export const calculateOffer = (input: CalculationInput): CalculationResult | null => {
   const {
     product,
+    listPriceGross: _listPriceGross,
     priceGross,
     termMonths,
     downPaymentPct,
     balloonPct,
+    extraMarginPct,
     vatRate,
     servicesRow,
     selectedServices
@@ -100,7 +104,8 @@ export const calculateOffer = (input: CalculationInput): CalculationResult | nul
     toDecimal(product.WIBOR_Roczny) +
     toDecimal(product.base_margin_pct) +
     toDecimal(product.spread_pct) +
-    toDecimal(product.marga_dodatkowa);
+    toDecimal(product.marga_dodatkowa) +
+    toDecimal(extraMarginPct);
 
   const monthlyRate = annualRate / 12 / 100;
   const principal = financedAmount;

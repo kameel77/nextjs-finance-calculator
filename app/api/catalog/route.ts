@@ -7,8 +7,14 @@ import {
   type Catalog,
   type SpreadsheetCatalog
 } from "../../lib/schemas";
+import { mockCatalog } from "../../lib/data/mock-catalog";
 
 const DEFAULT_SHEET_ID = "1g1zHJ_9MNJVa4JnzexAApJvQ1m8WEh4mZRlgFfvHa-M";
+
+const shouldSkipRemoteFetch =
+  process.env.CATALOG_FETCH_STRATEGY === "mock" ||
+  process.env.DISABLE_REMOTE_FETCH === "true" ||
+  (process.env.NEXT_PHASE === "phase-production-build" && process.env.ENABLE_REMOTE_CATALOG !== "true");
 
 const NUMERIC_FIELDS_BY_SHEET: Record<string, string[]> = {
   Produkty_Kredyt: [
@@ -106,14 +112,32 @@ export async function GET() {
   try {
     const sheetId = process.env.GOOGLE_SHEET_ID ?? DEFAULT_SHEET_ID;
 
-    const entries = await Promise.all(
+    if (shouldSkipRemoteFetch) {
+      return NextResponse.json(mockCatalog, {
+        headers: {
+          "Cache-Control": "no-store",
+          "X-Data-Source": "fallback"
+        }
+      });
+    }
+
+    const results = await Promise.allSettled(
       SHEET_NAMES.map(async (sheet) => {
         const data = await fetchSheet(sheetId, sheet);
         return [sheet, data] as const;
       })
     );
 
-    const rawPayload = Object.fromEntries(entries);
+    const fulfilled = results.filter(
+      (result): result is PromiseFulfilledResult<readonly [string, SheetRow[]]> =>
+        result.status === "fulfilled"
+    );
+
+    if (fulfilled.length !== SHEET_NAMES.length) {
+      throw new Error("Nie udało się pobrać wszystkich zakładek arkusza.");
+    }
+
+    const rawPayload = Object.fromEntries(fulfilled.map((result) => result.value));
     const spreadsheetPayload = spreadsheetCatalogSchema.parse(rawPayload);
     const catalog = toCatalog(spreadsheetPayload);
 
@@ -123,15 +147,16 @@ export async function GET() {
       }
     });
   } catch (error) {
-    console.error("Catalog API error", error);
-    return NextResponse.json(
-      {
-        message:
-          error instanceof Error
-            ? error.message
-            : "Nie udało się pobrać danych katalogowych z Google Sheets."
-      },
-      { status: 500 }
+    console.warn(
+      "Catalog API – fallback to mock data:",
+      error instanceof Error ? error.message : error
     );
+    return NextResponse.json(mockCatalog, {
+      headers: {
+        "Cache-Control": "no-store",
+        "X-Data-Source": "fallback"
+      },
+      status: 200
+    });
   }
 }
