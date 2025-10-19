@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "cross-env NODE_ENV=production SWC_THREADS=1 next build",
-    "start": "cross-env NODE_ENV=production node server.js",
+    "build": "npx cross-env NODE_ENV=production SWC_THREADS=1 next build",
+    "start": "npx cross-env NODE_ENV=production node server.js",
     "lint": "next lint"
   },
   "dependencies": {
