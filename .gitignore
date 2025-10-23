@@ -6,3 +6,4 @@ pnpm-lock.yaml
 package-lock.json
 .env*
 planning.md
+deploy.zip
