@@ -522,8 +522,7 @@ export function ParameterForm() {
             Parametry finansowania
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Dane pobierane w czasie rzeczywistym z arkusza Google (Apps Script). Wszystkie pola
-            aktualizują wyniki w panelu po prawej stronie.
+            Dane pobierane w czasie rzeczywistym.
           </Typography>
         </Box>
 
@@ -735,18 +734,6 @@ export function ParameterForm() {
                     }}
                   />
                 </FormControl>
-                <FormControl fullWidth>
-                  <TextField
-                    type="number"
-                    label="Dodatk. marża fin. (%)"
-                    value={form.extraMarginPct}
-                    onChange={handleExtraMarginChange}
-                    inputProps={{ min: 0, max: 100, step: 0.1 }}
-                    InputProps={{
-                      endAdornment: <InputAdornment position="end">%</InputAdornment>
-                    }}
-                  />
-                </FormControl>
               </Stack>
 
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
@@ -763,6 +750,18 @@ export function ParameterForm() {
                         : undefined
                     }
                     inputProps={{ min: 0, max: 100, step: 0.5 }}
+                  />
+                </FormControl>
+                <FormControl fullWidth>
+                  <TextField
+                    type="number"
+                    label="Dodatk. marża fin. (%)"
+                    value={form.extraMarginPct}
+                    onChange={handleExtraMarginChange}
+                    inputProps={{ min: 0, max: 100, step: 0.1 }}
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">%</InputAdornment>
+                    }}
                   />
                 </FormControl>
                 <FormControl fullWidth>

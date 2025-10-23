@@ -10,13 +10,13 @@ export default function HomePage() {
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
       <Stack spacing={4}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
-          <Image src="/logo.svg" alt="Logo" width={250} height={50} />
-          <Stack alignItems={{ xs: 'center', md: 'flex-start' }}>
-            <Typography component="h1" variant="h4" sx={{ textAlign: { xs: 'center', md: 'left' }, fontSize: { xs: '1.75rem', md: '2.125rem' } }}>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Image src="/logo.svg" alt="Logo" width={300} height={70} />
+          <Stack>
+            <Typography component="h1" variant="h4">
               Dealer Car Financing Calculator
             </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ textAlign: { xs: 'center', md: 'left' }, fontSize: { xs: '0.875rem', md: '1rem' } }}>
+            <Typography variant="body1" color="text.secondary">
               Kalkulator finansowania samochodów dla doradców i klientów
               biznesowych.
             </Typography>
