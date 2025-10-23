@@ -13,8 +13,7 @@ const DEFAULT_SHEET_ID = "1g1zHJ_9MNJVa4JnzexAApJvQ1m8WEh4mZRlgFfvHa-M";
 
 const shouldSkipRemoteFetch =
   process.env.CATALOG_FETCH_STRATEGY === "mock" ||
-  process.env.DISABLE_REMOTE_FETCH === "true" ||
-  (process.env.NEXT_PHASE === "phase-production-build" && process.env.ENABLE_REMOTE_CATALOG !== "true");
+  process.env.DISABLE_REMOTE_FETCH === "true";
 
 const NUMERIC_FIELDS_BY_SHEET: Record<string, string[]> = {
   Produkty_Kredyt: [
